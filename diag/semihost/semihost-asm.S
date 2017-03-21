@@ -13,7 +13,7 @@
 
 #include <asm.h>
 
-declare_text_function semihost_call
+declare_function semihost_call, .text
 	.fnstart
 	.cantunwind
 

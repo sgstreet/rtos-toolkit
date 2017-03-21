@@ -128,7 +128,7 @@ _vectors:
 	.long	DMA2D_IRQHandler                  /* DMA2D                        */
 	.size	_vectors, . - _vectors
 
-declare_weak_function Default_Handler
+declare_weak_function Default_Handler, .after_vectors
 	.fnstart
 	.cantunwind
 

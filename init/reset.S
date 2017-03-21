@@ -34,7 +34,7 @@
 
 #include <asm.h>
 
-declare_function Reset_Handler
+declare_function Reset_Handler, .after_vectors
 	.fnstart
 	.cantunwind
 

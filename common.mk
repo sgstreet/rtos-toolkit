@@ -29,10 +29,10 @@ MKIMAGE := ${TOOLS_ROOT}/scripts/make-image
 CROSS_FLAGS := -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 
 CPPFLAGS := -D_REENT_SMALL -D__STARTUP_COPY_MULTIPLE -D__STARTUP_CLEAR_BSS_MULTIPLE -D__NO_SYSTEM_INIT -DBUILD_TYPE="${BUILD_TYPE}" -I${PROJECT_ROOT}/include
 ARFLAGS := cr
-ASFLAGS := ${CROSS_FLAGS}
+ASFLAGS := ${CROSS_FLAGS} 
 CFLAGS := ${CROSS_FLAGS} -fno-omit-frame-pointer -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -Wall -Wunused -Wuninitialized -Wmissing-declarations -std=gnu11 -mpoke-function-name -funwind-tables
 CXXFLAGS := ${CROSS_FLAGS} -fno-omit-frame-pointer -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -Wall -Wunused -Wuninitializedl -Wmissing-declarations -std=gnu++11 -mpoke-function-name -funwind-tables
-LDFLAGS := ${CROSS_FLAGS} -T memory.ld -T regions.ld -T sections.ld -nostartfiles --specs=nano.specs -Xlinker --gc-sections -Wl,--cref -Wl,-Map,"$(basename ${TARGET}).map" 
+LDFLAGS := ${CROSS_FLAGS} -u _printf_float -T memory.ld -T regions.ld -T sections.ld -nostartfiles --specs=nano.specs -Xlinker --gc-sections -Wl,--cref -Wl,-Map,"$(basename ${TARGET}).map" 
 LDLIBS :=
 LOADLIBES := 
 

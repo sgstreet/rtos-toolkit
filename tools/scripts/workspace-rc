@@ -1,0 +1,11 @@
+source /etc/bash.bashrc
+export PROJECT_ROOT=$PWD
+export ARCHIVE_ROOT=$PROJECT_ROOT/archives
+export TOOLS_ROOT=$PROJECT_ROOT/tools
+export IMAGE_ROOT=$PROJEC_ROOT/images
+export OUTPUT_ROOT=$PROJECT_ROOT/build
+export PATH=~/local/libexec/gcc-arm-none-eabi-5_4-2017q1/bin:$PROJECT_ROOT/local/libexec/JLink_Linux_V612i_x86_64:$PATH
+alias home='cd $PROJECT_ROOT'
+#alias ide='$PROJECT_ROOT/tools/scripts/ide'
+alias edit='subl'
+

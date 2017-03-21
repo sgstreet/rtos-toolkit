@@ -25,7 +25,7 @@
 #endif
 
 /* Macro to declare function */
-.macro declare_function function_name
+.macro declare_function function_name, section_name
 	.L0_\function_name:
 	.asciz "\function_name"
 	.align 2
@@ -35,11 +35,12 @@
 	.thumb_func
 	.global \function_name
 	.type \function_name, %function
-	.section .after_vectors.\function_name
+	.section \section_name\().\function_name
 	\function_name:
 .endm
 
-.macro declare_weak_function function_name
+/* Macro to declare function */
+.macro declare_weak_function function_name, section_name
 	.L0_\function_name:
 	.asciz "\function_name"
 	.align 2
@@ -49,25 +50,16 @@
 	.thumb_func
 	.weak \function_name
 	.type \function_name, %function
-	.section .after_vectors.\function_name
+	.section \section_name\().\function_name
 	\function_name:
 .endm
 
-/* Macro to declare function */
-.macro declare_text_function function_name
-	.L0_\function_name:
-	.asciz "\function_name"
-	.align 2
-	.L1_\function_name:
-	.word 0xff000000 + (.L1_\function_name - .L0_\function_name)
-	.text
-	.thumb_func
-	.global \function_name
-	.type \function_name, %function
-	.section .text.\function_name
-	\function_name:
+/* Macro to export weak alias to a default function */
+.macro	def_default_function handler_name default_function
+	.weak	\handler_name
+	.set	\handler_name, \default_function
 .endm
 
 #endif
 
-#endif /* ASM_H_ */
+#endif

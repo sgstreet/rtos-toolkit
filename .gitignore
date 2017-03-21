@@ -1,5 +1,9 @@
 build/
 tmp/
+eclipse/
+.cproject
+.project
+.settings
 
 # Object files
 *.o

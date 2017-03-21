@@ -1,8 +1,0 @@
-#!/bin/bash
-unset PROJECT_ROOT
-unset ARCHIVE_ROOT
-unset TOOLS_ROOT
-unset IMAGE_ROOT
-unset OUTPUT_ROOT
-
-~/local/bin/eclipse ~/Workspace/eclipse

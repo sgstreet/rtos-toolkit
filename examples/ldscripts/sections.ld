@@ -61,7 +61,7 @@ SECTIONS
 		KEEP(*(.vectors))
 		__vectors_end__ = .;
 		
-		*(.after_vectors .after_vectors.*)
+		*(.after_vectors.* .after_vectors)
 
 	} > TEXT
 	__vectors = LOADADDR(.vectors);

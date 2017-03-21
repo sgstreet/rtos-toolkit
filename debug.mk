@@ -14,3 +14,4 @@
 LDFLAGS += -Og
 CFLAGS += -Og -g3 -fno-move-loop-invariants
 CPPFLAGS += -DDEBUG -DBUILD_TYPE_DEBUG
+ASFLAGS += -Og -g3
