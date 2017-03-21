@@ -50,7 +50,7 @@ struct exception_frame
 	uint32_t lr;
 	uint32_t pr;
 	uint32_t psr;
-#if 0
+
 	uint32_t s0;
 	uint32_t s1;
 	uint32_t s2;
@@ -68,12 +68,23 @@ struct exception_frame
 	uint32_t s14;
 	uint32_t s15;
 	uint32_t fpscr;
-#endif
 };
 
 struct scheduler_frame
 {
-#if 0
+	uint32_t exec_return;
+	uint32_t control;
+	uint32_t basepri;
+
+	uint32_t r4;
+	uint32_t r5;
+	uint32_t r6;
+	uint32_t r7;
+	uint32_t r8;
+	uint32_t r9;
+	uint32_t r10;
+	uint32_t r11;
+
 	uint32_t s16;
 	uint32_t s17;
 	uint32_t s18;
@@ -90,20 +101,6 @@ struct scheduler_frame
 	uint32_t s29;
 	uint32_t s30;
 	uint32_t s31;
-#endif
-
-	uint32_t exec_return;
-	uint32_t control;
-	uint32_t basepri;
-
-	uint32_t r4;
-	uint32_t r5;
-	uint32_t r6;
-	uint32_t r7;
-	uint32_t r8;
-	uint32_t r9;
-	uint32_t r10;
-	uint32_t r11;
 
 	uint32_t r0;
 	uint32_t r1;
@@ -113,7 +110,7 @@ struct scheduler_frame
 	uint32_t lr;
 	uint32_t pc;
 	uint32_t psr;
-#if 0
+
 	uint32_t s0;
 	uint32_t s1;
 	uint32_t s2;
@@ -131,8 +128,6 @@ struct scheduler_frame
 	uint32_t s14;
 	uint32_t s15;
 	uint32_t fpscr;
-#endif
-
 };
 
 enum task_state

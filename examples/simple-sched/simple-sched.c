@@ -20,7 +20,7 @@ struct test_task_descriptor
 {
 	struct task_descriptor td;
 	unsigned long tid;
-	uint8_t __attribute__((aligned(8))) stack[1024];
+	uint8_t __attribute__((aligned(8))) stack[2048];
 };
 
 static int diag_task(unsigned int tid, void *context)
@@ -35,7 +35,27 @@ static int diag_task(unsigned int tid, void *context)
 		if (delay > 9)
 			scheduler_yield();
 		else
-			scheduler_sleep((unsigned long)rand() % 10);
+			scheduler_sleep(delay);
+	}
+
+	diag_printf("%s completed\n", td->name);
+	return 0;
+}
+
+static int diag_task_float(unsigned int tid, void *context)
+{
+	struct task_descriptor *td = context;
+	diag_printf("%s running\n", td->name);
+	for (int counter = 0; counter < 10000; ++counter) {
+		size_t random_size = (size_t)(rand() % 10) + 1;
+		char  random_stack[random_size];
+		memset(random_stack, 0xff, random_size);
+		float delay = (rand() % 20) * 2.5;
+		diag_printf("%s delaying: %f\n", td->name, delay);
+		if (delay > 9)
+			scheduler_yield();
+		else
+			scheduler_sleep(delay);
 	}
 
 	diag_printf("%s completed\n", td->name);
@@ -69,8 +89,8 @@ static int main_task(unsigned int tid, void *context)
 		{
 			.td =
 			{
-				.name = "diag_task_c",
-				.entry_point = diag_task,
+				.name = "diag_task_c - float",
+				.entry_point = diag_task_float,
 				.context = &descriptors[2].td,
 				.stack_size = sizeof(descriptors[2].stack),
 				.stack = descriptors[2].stack,
@@ -79,8 +99,8 @@ static int main_task(unsigned int tid, void *context)
 		{
 			.td =
 			{
-				.name = "diag_task_d",
-				.entry_point = diag_task,
+				.name = "diag_task_d - float",
+				.entry_point = diag_task_float,
 				.context = &descriptors[3].td,
 				.stack_size = sizeof(descriptors[3].stack),
 				.stack = descriptors[3].stack,

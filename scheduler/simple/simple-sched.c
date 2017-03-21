@@ -47,20 +47,20 @@ static inline void __attribute__((always_inline)) request_context_switch(void)
 
 static inline bool __attribute__((always_inline)) is_interrupt_context(void)
 {
-  uint32_t result;
+	uint32_t result;
 
-  asm volatile ("mrs %0, ipsr" : "=r" (result));
+	asm volatile ("mrs %0, ipsr" : "=r" (result));
 
-  return result != 0;
+	return result != 0;
 }
 
 static inline bool __attribute__((always_inline)) is_svc_context(void)
 {
-  uint32_t result;
+	uint32_t result;
 
-  asm volatile ("mrs %0, ipsr" : "=r" (result));
+	asm volatile ("mrs %0, ipsr" : "=r" (result));
 
-  return result == 11;
+	return result == 11;
 }
 
 void SysTick_Handler(void)
@@ -438,6 +438,7 @@ unsigned long scheduler_create(const struct task_descriptor *descriptor)
 
 	/* Build the scheduler frame to use the PSP and run in privileged mode */
 	tcb->psp = (void *)((uint32_t)tcb - ALIGNMENT_ROUND(struct scheduler_frame, 8UL));
+	volatile size_t schedule_frame_size = sizeof(struct scheduler_frame);
 	struct scheduler_frame *task_frame = (struct scheduler_frame *)tcb->psp;
 	task_frame->control = CONTROL_SPSEL_Msk;
 	task_frame->pc = ((uint32_t)dispatch & ~0x01UL);
@@ -456,6 +457,40 @@ unsigned long scheduler_create(const struct task_descriptor *descriptor)
 	task_frame->r10 = 0xdead000a;
 	task_frame->r11 = 0xdead000b;
 	task_frame->r12 = 0xdead000c;
+
+	task_frame->s0 = 0xfead0000;
+	task_frame->s1 = 0xfead0001;
+	task_frame->s2 = 0xfead0002;
+	task_frame->s3 = 0xfead0003;
+	task_frame->s4 = 0xfead0004;
+	task_frame->s5 = 0xfead0005;
+	task_frame->s6 = 0xfead0006;
+	task_frame->s7 = 0xfead0007;
+	task_frame->s8 = 0xfead0008;
+	task_frame->s9 = 0xfead0009;
+	task_frame->s10 = 0xfead000a;
+	task_frame->s11 = 0xfead000b;
+	task_frame->s12 = 0xfead000c;
+	task_frame->s13 = 0xfead000d;
+	task_frame->s14 = 0xfead000e;
+	task_frame->s15 = 0xfead000f;
+	task_frame->s16 = 0xfead0010;
+	task_frame->s17 = 0xfead0011;
+	task_frame->s18 = 0xfead0012;
+	task_frame->s19 = 0xfead0013;
+	task_frame->s20 = 0xfead0014;
+	task_frame->s21 = 0xfead0015;
+	task_frame->s22 = 0xfead0016;
+	task_frame->s23 = 0xfead0017;
+	task_frame->s24 = 0xfead0018;
+	task_frame->s25 = 0xfead0019;
+	task_frame->s26 = 0xfead001a;
+	task_frame->s27 = 0xfead001b;
+	task_frame->s28 = 0xfead001c;
+	task_frame->s29 = 0xfead001d;
+	task_frame->s30 = 0xfead001e;
+	task_frame->s31 = 0xfead001f;
+
 
 	/* Add the new task to the ready queue, locking not required as scheduler is not running yet */
 	scheduler_disable_interrupts();

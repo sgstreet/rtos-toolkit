@@ -11,6 +11,8 @@
  *     Author: Stephen Street (stephen@redrocketcomputing.com)
  */
 
+#include <asm.h>
+
 	.syntax	unified
 
 #if __ARM_ARCH == 7
@@ -18,42 +20,6 @@
 #else
 	.arch	armv6-m
 #endif
-
-/* Macro to declare function */
-.macro declare_function function_name, section_name
-	.L0_\function_name:
-	.asciz "\function_name"
-	.align 2
-	.L1_\function_name:
-	.word 0xff000000 + (.L1_\function_name - .L0_\function_name)
-	.text
-	.thumb_func
-	.global \function_name
-	.type \function_name, %function
-	.section \section_name\().\function_name
-	\function_name:
-.endm
-
-/* Macro to declare function */
-.macro declare_weak_function function_name, section_name
-	.L0_\function_name:
-	.asciz "\function_name"
-	.align 2
-	.L1_\function_name:
-	.word 0xff000000 + (.L1_\function_name - .L0_\function_name)
-	.text
-	.thumb_func
-	.weak \function_name
-	.type \function_name, %function
-	.section \section_name\().\function_name
-	\function_name:
-.endm
-
-/* Macro to export weak alias to a default function */
-.macro	def_default_function handler_name default_function
-	.weak	\handler_name
-	.set	\handler_name, \default_function
-.endm
 
 /* Global services jump table, patterned after the CMSIS standard interrupt table */
 	.section .data
@@ -123,6 +89,14 @@ declare_function SVC_Handler, .after_vectors
 handle_linkage_bits:
 	tst		r12, #0x20
 	beq		update_stack
+
+	/* Stack the callee save floating point registers, if there is a floating point context */
+	tst			lr, #0x10
+	ite			eq
+	vstmdbeq	r0!, {s16-s31}
+	subne		r0, #64
+
+	/* Save the callee/control register */
 	mov		r1, lr
 	mrs		r2, control
 	mrs		r3, basepri
@@ -170,9 +144,11 @@ declare_function PendSV_Handler, .after_vectors
 	mrseq	r0, msp
 	mrsne	r0, psp
 
-#	tst			lr, #0x10
-#	it			eq
-#	vstmdbeq	r0!, {S16, S32}
+	/* Stack the callee save floating point registers, if there is a floating point context */
+	tst			lr, #0x10
+	ite			eq
+	vstmdbeq	r0!, {s16-s31}
+	subne		r0, #64
 
 	/* Save the current context */
 	mov		r1, lr
@@ -188,11 +164,15 @@ skip_save:
 	mov		lr, r1
 	msr		control, r2
 	msr		basepri, r3
-	isb
 
-#	tst			lr, #0x10
-#	it			eq
-#	vldmiaeq	r0!, {s16, s32}
+	/* Unstack the callee saved float point registers, if there is a float point context */
+	tst			lr, #0x10
+	ite			eq
+	vldmiaeq	r0!, {s16-s31}
+	addne		r0, #64
+
+	/* Force instruction barrier */
+	isb
 
 	/* Set current stack pointer */
 	tst		lr, #4
