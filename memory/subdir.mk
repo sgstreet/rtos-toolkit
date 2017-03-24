@@ -5,17 +5,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# examples.mk
+# subdir.mk
 #
-# Created on: Mar 25, 2017
+# Created on: Mar 16, 2017
 #     Author: Stephen Street (stephen@redrocketcomputing.com)
 #
 
-include ${PROJECT_ROOT}/tools/makefiles/tree.mk
+where-am-i := $(lastword ${MAKEFILE_LIST})
 
-blink: board
-coremark: board
-simple-sched: board
-buddy-sim: board
-target: blink coremark simple-sched buddy-sim
-
+SRC += $(wildcard $(dir $(where-am-i))*.c)
+SRC += $(wildcard $(dir $(where-am-i))*.S)
+SRC += $(wildcard $(dir $(where-am-i))*.s)

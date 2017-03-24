@@ -1,3 +1,16 @@
+#
+# Copyright (C) 2017 Red Rocket Computing, LLC
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Makefile
+#
+# Created on: Mar 16, 2017
+#     Author: Stephen Street (stephen@redrocketcomputing.com)
+#
+
 export PROJECT_ROOT ?= ${CURDIR}
 export TOOLCHAIN_PATH ?= /home/stephen/local/libexec/gcc-arm-none-eabi-5_4-2017q1/bin
 export OUTPUT_ROOT ?= ${PROJECT_ROOT}/build
@@ -7,7 +20,7 @@ export CROSS_COMPILE ?= ${TOOLCHAIN_PATH}/arm-none-eabi-
 
 include ${PROJECT_ROOT}/tools/makefiles/tree.mk
 
-examples: util init diag scheduler
+examples: util init diag memory scheduler
 
 target: examples
 
