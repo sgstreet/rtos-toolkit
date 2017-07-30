@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [[ -n $1 ]]; then
+	workspace="-data $1"
+elif [[ -n $ECLIPSE_WORKSPACE ]]; then
+	workspace="-data $ECLIPSE_WORKSPACE"
+elif [[ -d ~/Workspace/eclipse/neon ]]; then
+	workspace="-data $HOME/Workspace/eclipse/oxygen"
+fi
+
+AUTHOR="$(git config --get user.name) ($(git config --get user.email))"
+
+$HOME/local/libexec/eclipse/oxygen/eclipse $workspace -vmargs -Duser.name="$AUTHOR" -Xmx512M&
