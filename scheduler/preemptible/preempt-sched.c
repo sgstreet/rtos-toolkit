@@ -21,7 +21,7 @@
 
 #include <cmsis.h>
 
-#include <scheduler/simple-sched.h>
+#include <scheduler/preempt-sched.h>
 
 #define ALIGNMENT_ROUND(TYPE, BYTES) ((sizeof(TYPE) + (BYTES - 1)) & ~(BYTES - 1))
 
