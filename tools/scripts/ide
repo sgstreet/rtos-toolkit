@@ -5,9 +5,9 @@ if [[ -n $1 ]]; then
 elif [[ -n $ECLIPSE_WORKSPACE ]]; then
 	workspace="-data $ECLIPSE_WORKSPACE"
 elif [[ -d ~/Workspace/eclipse/neon ]]; then
-	workspace="-data $HOME/Workspace/eclipse/oxygen"
+	workspace="-data $HOME/Workspace/eclipse/neon"
 fi
 
 AUTHOR="$(git config --get user.name) ($(git config --get user.email))"
 
-$HOME/local/libexec/eclipse/oxygen/eclipse $workspace -vmargs -Duser.name="$AUTHOR" -Xmx512M&
+$HOME/bin/eclipse $workspace -vmargs -Duser.name="$AUTHOR" -Xmx512M&

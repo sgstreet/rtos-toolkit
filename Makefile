@@ -12,7 +12,7 @@
 #
 
 export PROJECT_ROOT ?= ${CURDIR}
-export TOOLCHAIN_PATH ?= /home/stephen/local/libexec/gcc-arm-none-eabi-5_4-2017q1/bin
+export TOOLCHAIN_PATH ?= /home/stephen/local/libexec/gcc-arm-none-eabi-6-2017-q3-update/bin
 export OUTPUT_ROOT ?= ${PROJECT_ROOT}/build
 export BUILD_TYPE ?= debug
 

@@ -41,7 +41,7 @@ static inline void __attribute__((always_inline)) request_context_switch(void)
 	/* Pend the pendsv interrupt */
 	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 
-	/* Make sure this is visable, not require but architecturally recommended */
+	/* Make sure this is visible, not require but architecturally recommended */
 	__DSB();
 }
 
@@ -70,20 +70,34 @@ void SysTick_Handler(void)
 		return;
 
 	/* Update the jiffies */
-	++scheduler->jiffies;
+	unsigned long long jiffies = atomic_fetch_add(&scheduler->jiffies, 1);
 
-	/* Do not let higher priority interrupt, bug us while adjusting the scheduling queues */
-	scheduler_disable_interrupts();
+	/* Has the slice expired for the current task */
+	bool switch_context = false;
+	if (scheduler->current->slice_expires < 0xffffffffffffffff && scheduler->current->slice_expires < jiffies)
+		switch_context = true;
 
-	/* Notify all expired timers */
-	struct scheduler_timer *expired;
-	while((list_first_entry(&scheduler->timers, struct scheduler_timer, timer_node)->expires < scheduler->jiffies)) {
-		expired = list_pop_entry(&scheduler->timers, struct scheduler_timer, timer_node);
-		expired->expired(expired->context);
-	}
+	/* Has the nearest timer expired? */
+	struct scheduler_timer *nearest = sched_list_first_entry(&scheduler->timers, struct scheduler_timer, timer_node);
+	if (nearest->expires < jiffies)
+		switch_context = true;
 
-	/* All good */
-	scheduler_enable_interrupts();
+	/* Do we need to switch */
+	if (switch_context)
+		request_context_switch();
+
+//	/* Do not let higher priority interrupt, bug us while adjusting the scheduling queues */
+//	scheduler_disable_interrupts();
+//
+//	/* Notify all expired timers */
+//	struct scheduler_timer *expired;
+//	while((list_first_entry(&scheduler->timers, struct scheduler_timer, timer_node)->expires < scheduler->jiffies)) {
+//		expired = list_pop_entry(&scheduler->timers, struct scheduler_timer, timer_node);
+//		expired->expired(expired->context);
+//	}
+//
+//	/* All good */
+//	scheduler_enable_interrupts();
 }
 
 static void add_timer(struct scheduler_timer *timer, uint32_t delay, void (*expired)(void *context), void *context)
@@ -491,8 +505,7 @@ unsigned long scheduler_create(const struct task_descriptor *descriptor)
 	task_frame->s30 = 0xfead001e;
 	task_frame->s31 = 0xfead001f;
 
-
-	/* Add the new task to the ready queue, locking not required as scheduler is not running yet */
+	/* Add the new task to the ready queue */
 	scheduler_disable_interrupts();
 	list_push(&scheduler->ready_queue, &tcb->queue_node);
 	scheduler_enable_interrupts();
@@ -664,7 +677,7 @@ int scheduler_resume(unsigned long tid)
 	return -1;
 }
 
-unsigned long scheduler_wait_event(unsigned long mask, unsigned long msecs)
+unsigned long scheduler_event_wait(unsigned long mask, unsigned long msecs)
 {
 	unsigned long masked_events = 0;
 
@@ -699,7 +712,7 @@ unsigned long scheduler_wait_event(unsigned long mask, unsigned long msecs)
 	return masked_events;
 }
 
-int scheduler_notify_event(unsigned long tid, unsigned long events)
+int scheduler_event_notify(unsigned long tid, unsigned long events)
 {
 	struct task_control_block *tcb = (struct task_control_block *)tid;
 
@@ -746,3 +759,32 @@ int scheduler_join(unsigned long tid, int *return_code, unsigned long msecs)
 	return 0;
 }
 
+unsigned long scheduler_monitor_allocate(void)
+{
+	return 0;
+}
+
+int scheduler_monitor_release(unsigned long mid)
+{
+	return -1;
+}
+
+int scheduler_monitor_lock(unsigned long mid, unsigned long msecs)
+{
+	return -1;
+}
+
+int scheduler_monitor_unlock(unsigned long mid)
+{
+	return -1;
+}
+
+int scheduler_monitor_wait(unsigned long mid, unsigned long msecs)
+{
+	return -1;
+}
+
+int scheduler_monitor_notify(unsigned long mid, bool all)
+{
+	return -1;
+}

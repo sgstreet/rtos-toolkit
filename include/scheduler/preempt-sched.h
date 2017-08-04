@@ -15,7 +15,8 @@
 #ifndef PREEMPT_SCHED_H_
 #define PREEMPT_SCHED_H_
 
-#include <util/linked-list.h>
+#include <assert.h>
+#include <stdatomic.h>
 
 #define TASK_NAME_LEN 32
 
@@ -44,13 +45,22 @@
 #define SCHEDULER_INT_MAX_PRIORITY (SCHEDULER_SYSTICK_PRIORITY + 1)
 #define SCHEDULER_INT_MIN_PRIORITY (SCHEDULER_SVC_PRIORITY - 1)
 
-#define SCHEDULER_HARD_INT_MAX_PRIORITY (SCHEDULER_MAX_HARD_PRIORITY)
-#define SCHEDULER_HARD_INT_MAX_PRIORITY (SCHEDULER_SYSTICK_PRIORITY - 1)
+#define SCHEDULER_HARDINT_MAX_PRIORITY (SCHEDULER_MAX_MCU_PRIORITY)
+#define SCHEDULER_HARDINT_MIN_PRIORITY (SCHEDULER_SYSTICK_PRIORITY - 1)
 
 #define SCHEDULER_NUM_TASK_PRIORITIES 32
 #define SCHEDULER_MAX_TASK_PRIORITY 0
 #define SCHEDULER_MIN_TASK_PRIORITY (SCHEDULER_NUM_TASK_PRIORITIES - 1)
 
+#define SCHEDULER_MAX_MONITORS 50
+
+#define sched_container_of(ptr, type, member) ({ \
+        const typeof(((type *)0)->member) *__mptr = (ptr);    \
+        (type *)((char *)__mptr - offsetof(type, member));})
+
+#define sched_container_of_or_null(ptr, type, member) ({ \
+        const typeof(((type *)0)->member) *__mptr = (ptr);    \
+        __mptr ? (type *)((char *)__mptr - offsetof(type, member)) : 0;})
 
 struct exception_frame
 {
@@ -142,6 +152,18 @@ struct scheduler_frame
 	uint32_t fpscr;
 };
 
+struct sched_list
+{
+	struct sched_list *next;
+	struct sched_list *prev;
+};
+
+struct sched_queue
+{
+	unsigned long mask;
+	struct sched_list buckets[SCHEDULER_NUM_TASK_PRIORITIES];
+};
+
 enum task_state
 {
 	TASK_DEAD = 0,
@@ -154,6 +176,14 @@ enum task_state
 
 typedef int (*task_entry_point_t)(unsigned int tid, void *context);
 
+struct scheduler_timer
+{
+	unsigned long long expires;
+	void (*expired)(void *context);
+	void *context;
+	struct sched_list timer_node;
+};
+
 struct task_descriptor
 {
 	char name[TASK_NAME_LEN];
@@ -164,30 +194,39 @@ struct task_descriptor
 	void *stack;
 };
 
-struct scheduler_timer
-{
-	uint64_t expires;
-	void (*expired)(void *context);
-	void *context;
-	struct list_node timer_node;
-};
-
 struct task_control_block
 {
+	/* This must be the first field, PendSV depends on it */
 	struct scheduler_frame *psp;
+
+	const struct task_descriptor *task_descriptor;
+
 	enum task_state state;
 	int return_code;
 	unsigned long events;
 	unsigned long base_priority;
 	unsigned long current_priority;
+	unsigned long long slice_expires;
 
 	struct scheduler_timer timer;
 
-	const struct task_descriptor *task_descriptor;
+	struct sched_queue join_queue;
 
-	struct linked_list join_queue;
-	struct list_node queue_node;
-	struct list_node scheduler_node;
+	struct sched_queue *current_queue;
+	struct sched_list queue_node;
+
+	struct sched_list scheduler_node;
+};
+
+struct monitor
+{
+	atomic_long value;
+
+	struct task_control_block *owner;
+	struct sched_queue lockers;
+	struct sched_queue waiters;
+
+	struct sched_list scheduler_node;
 };
 
 struct scheduler
@@ -197,12 +236,17 @@ struct scheduler
 
 	struct scheduler_frame *initial_frame;
 
-	struct linked_list ready_queue;
-	struct linked_list suspended_queue;
-	struct linked_list timers;
-	struct linked_list tasks;
+	struct sched_queue ready_queue;
+	struct sched_queue suspended_queue;
 
-	unsigned long jiffies;
+	struct sched_list timers;
+	struct sched_list tasks;
+	struct sched_list monitors;
+
+	atomic_ullong jiffies;
+
+	struct sched_list free_monitors;
+	struct monitor available_monitors[SCHEDULER_MAX_MONITORS];
 };
 
 static inline int __attribute__((always_inline)) svc_call0(const uint8_t code)
@@ -285,30 +329,134 @@ static inline int __attribute__((always_inline)) svc_call4(uint8_t code, uint32_
 	return result;
 }
 
-static inline void __attribute__((always_inline)) scheduler_disable_interrupts(void)
+static inline void sched_list_init(struct sched_list *list)
 {
-	asm volatile("cpsid i" : : : "memory");
+	list->next = list;
+	list->prev = list;
 }
 
-static inline void __attribute__((always_inline)) scheduler_enable_interrupts(void)
+static inline bool sched_list_empty(struct sched_list *list)
 {
-	asm volatile("cpsie i" : : : "memory");
+	assert(list != 0);
+
+	return list->next == list;
 }
+
+static inline void sched_list_insert(struct sched_list *node, struct sched_list *first, struct sched_list *second)
+{
+	assert(node != 0 && first != 0 && second != 0);
+
+	second->prev = node;
+	node->next = second;
+	node->prev = first;
+	first->next = node;
+}
+
+static inline void sched_list_remove(struct sched_list *node)
+{
+	assert(node != 0);
+
+	node->next->prev = node->prev;
+	node->prev->next = node->next;
+	node->next = node;
+	node->prev = node;;
+}
+
+static inline void sched_list_push(struct sched_list *list, struct sched_list *node)
+{
+	assert(list != 0 && node != 0);
+
+	sched_list_insert(node, list->prev, list);
+}
+
+static inline struct sched_list *sched_list_pop(struct sched_list *list)
+{
+	assert(list != 0);
+
+	struct sched_list *node = list->next;
+
+	if (node == list)
+		return 0;
+
+	sched_list_remove(node);
+
+	return node;
+}
+
+static inline void sched_queue_init(struct sched_queue *queue)
+{
+	assert(queue != 0);
+
+	queue->mask = 0;
+	for (int i = 0; i < SCHEDULER_NUM_TASK_PRIORITIES; ++i) {
+		queue->buckets[i].next = &queue->buckets[i];
+		queue->buckets[i].prev = &queue->buckets[i];
+	}
+}
+
+static inline void sched_queue_push(struct sched_queue *queue, struct sched_list *node, unsigned long priority)
+{
+	assert(queue != 0 && node != 0 && priority >= 0 && priority < SCHEDULER_NUM_TASK_PRIORITIES);
+
+	sched_list_push(&queue->buckets[priority], node);
+
+	queue->mask |= (1 << (SCHEDULER_NUM_TASK_PRIORITIES - priority - 1));
+}
+
+static inline struct sched_list *sched_queue_pop(struct sched_queue *queue)
+{
+	assert(queue != 0);
+
+	unsigned long priority = __builtin_clzl(queue->mask);
+	if (priority >= SCHEDULER_NUM_TASK_PRIORITIES)
+		return 0;
+
+	struct sched_list *node = sched_list_pop(&queue->buckets[priority]);
+	if (sched_list_empty(&queue->buckets[priority]))
+		queue->mask &= ~(1 << (SCHEDULER_NUM_TASK_PRIORITIES - priority - 1));
+
+	return node;
+}
+
+static inline void sched_queue_reprioritize(struct sched_queue *queue, struct sched_list *node, unsigned long old_priority, unsigned long new_priority)
+{
+	assert(queue != 0 && node != 0 && old_priority >= 0 && old_priority < SCHEDULER_NUM_TASK_PRIORITIES && new_priority >= 0 && new_priority < SCHEDULER_NUM_TASK_PRIORITIES);
+
+	sched_list_remove(node);
+	if (sched_list_empty(&queue->buckets[old_priority]))
+		queue->mask &= ~(1 << (SCHEDULER_NUM_TASK_PRIORITIES - old_priority - 1));
+
+	sched_queue_push(queue, node, new_priority);
+}
+
+#define sched_list_pop_entry(list, type, member) sched_container_of_or_null(sched_list_pop(list), type, member)
+#define sched_list_entry(ptr, type, member) sched_container_of_or_null(ptr, type, member)
+#define sched_list_first_entry(list, type, member) sched_list_entry((list)->next, type, member)
+#define sched_list_last_entry(list, type, member) sched_list_entry((list)->prev, type, member)
 
 int scheduler_run(struct scheduler *new_scheduler, int count, const struct task_descriptor *descriptors);
-unsigned long scheduler_create(const struct task_descriptor *descriptor);
-
-unsigned long scheduler_get_tid(void);
-
 int scheduler_is_running(void);
+
+unsigned long scheduler_create(const struct task_descriptor *descriptor);
+unsigned long scheduler_get_tid(void);
+unsigned long scheduler_set_priority(unsigned long tid, unsigned long priority);
+unsigned long scheduler_get_priority(unsigned long tid);
+int scheduler_join(unsigned long tid, int *return_code, unsigned long msecs);
+
 int scheduler_yield(void);
 int scheduler_sleep(unsigned long msec);
 
 int scheduler_suspend(void);
 int scheduler_resume(unsigned long tid);
 
-unsigned long scheduler_wait_event(unsigned long mask, unsigned long msecs);
-int scheduler_notify_event(unsigned long tid, unsigned long events);
-int scheduler_join(unsigned long tid, int *return_code, unsigned long msecs);
+unsigned long scheduler_event_wait(unsigned long mask, unsigned long msecs);
+int scheduler_event_notify(unsigned long tid, unsigned long events);
+
+unsigned long scheduler_monitor_allocate(void);
+int scheduler_monitor_release(unsigned long mid);
+int scheduler_monitor_lock(unsigned long mid, unsigned long msecs);
+int scheduler_monitor_unlock(unsigned long mid);
+int scheduler_monitor_wait(unsigned long mid, unsigned long msecs);
+int scheduler_monitor_notify(unsigned long mid, bool all);
 
 #endif
