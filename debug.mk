@@ -11,7 +11,7 @@
 #     Author: Stephen Street (stephen@redrocketcomputing.com)
 #
 
-LDFLAGS += -Og
-CFLAGS += -Og -g3 -fno-move-loop-invariants
+LDFLAGS += -O0
+CFLAGS += -O0 -g3 -fno-move-loop-invariants
 CPPFLAGS += -DDEBUG -DBUILD_TYPE_DEBUG
-ASFLAGS += -Og -g3
+ASFLAGS += -O0 -g3

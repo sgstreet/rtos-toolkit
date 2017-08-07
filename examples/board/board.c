@@ -213,7 +213,13 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 {
 	/* Enable the GPIO Port Clock and USART1 Clock */
 	__HAL_RCC_GPIOA_CLK_ENABLE();
-	__HAL_RCC_USART1_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+
+	__HAL_RCC_GPIOA_FORCE_RESET();
+	__HAL_RCC_GPIOC_FORCE_RESET();
+
+	__HAL_RCC_GPIOA_RELEASE_RESET();
+	__HAL_RCC_GPIOC_RELEASE_RESET();
 
 	/* Setup USART1 TX GPIO pin configuration  */
 	GPIO_InitTypeDef  GPIO_InitStruct;
@@ -228,17 +234,45 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 	GPIO_InitStruct.Pin = GPIO_PIN_10;
 	GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	__HAL_RCC_USART1_CLK_ENABLE();
+	__HAL_RCC_USART1_FORCE_RESET();
+	__HAL_RCC_USART1_RELEASE_RESET();
+
+	/* Initialize I2C3 SCL */
+	GPIO_InitStruct.Pin = GPIO_PIN_8;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/* Initialize I2C3 SDA */
+	GPIO_InitStruct.Pin = GPIO_PIN_9;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
+	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	__HAL_RCC_I2C3_CLK_ENABLE();
+	__HAL_RCC_I2C3_FORCE_RESET();
+	__HAL_RCC_I2C3_RELEASE_RESET();
 }
 
 void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
 {
 	/* Reset peripherals */
 	__HAL_RCC_USART1_FORCE_RESET();
-	__HAL_RCC_USART2_RELEASE_RESET();
+	__HAL_RCC_USART1_RELEASE_RESET();
+	__HAL_RCC_I2C3_FORCE_RESET();
+	__HAL_RCC_I2C3_RELEASE_RESET();
 
 	/* Disable peripherals and GPIO Clocks */
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_10);
+	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_8);
+	HAL_GPIO_DeInit(GPIOC, GPIO_PIN_9);
 }
 
 static void board_uart_init(void)

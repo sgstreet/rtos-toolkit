@@ -17,5 +17,6 @@ blink: board
 coremark: board
 simple-sched: board
 buddy-sim: board
-target: blink coremark simple-sched buddy-sim
+i2c: board
+target: blink coremark simple-sched buddy-sim i2c
 
